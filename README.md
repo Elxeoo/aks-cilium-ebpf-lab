@@ -12,48 +12,38 @@ This repository explores the elimination of `kube-proxy` in favor of Linux Kerne
 
 ---
 
-## 🏗️ Architecture Overview
+## 🏗️ Architecture & Topology
 
 The infrastructure isolates the Kubernetes Control Plane (API Server) inside a Virtual Network, blocking all direct inbound traffic from the public internet. Management and operations are conducted securely via an air-gapped Linux Jumpbox VM.
 
-```text
-[ Developer Machine / WSL ]
-           │
-           │  (SSH Port 22 - TLS RSA 4096)
-           ▼
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Azure Virtual Network: vnet-aks-lab (10.200.0.0/16)                      │
-│                                                                         │
-│  ┌─────────────────────────────┐    ┌────────────────────────────────┐  │
-│  │ Subnet: snet-jumpbox        │    │ Subnet: snet-aks-nodes         │  │
-│  │ (10.200.1.0/24)             │    │ (10.200.2.0/24)                │  │
-│  │                             │    │                                │  │
-│  │ ┌─────────────────────────┐ │    │ ┌────────────────────────────┐ │  │
-│  │ │ Jumpbox VM              │ │    │ │ AKS Worker Node            │ │  │
-│  │ │ (Standard_D2s_v5)       │ │    │ │ (aks-systempool / 10.200.2.x)│ │
-│  │ │ - Azure CLI & Kubectl   │ │    │ │ - Linux Kernel 6.8 (eBPF)  │ │  │
-│  │ └────────────┬────────────┘ │    │ └──────────────┬─────────────┘ │  │
-│  └──────────────┼──────────────┘    └────────────────┼───────────────┘  │
-│                 │ (kubectl / HTTPS Port 6443)        │                  │
-│                 ▼                                    │                  │
-│  ┌──────────────────────────────────────────────┐    │                  │
-│  │ Private AKS Control Plane (API Server)       │    │                  │
-│  │ (Private Endpoint & CoreDNS Resolution)      │    │                  │
-│  └──────────────────────────────────────────────┘    │                  │
-│                                                      ▼                  │
-│                                     ┌─────────────────────────────────┐ │
-│                                     │ Cilium Overlay (10.244.0.0/16)  │ │
-│                                     │  ┌───────────────────────────┐  │ │
-│                                     │  │ Pod Replicas (3x Nginx)   │  │ │
-│                                     │  │ Dynamic IPs: 10.244.0.x   │  │ │
-│                                     │  └─────────────▲─────────────┘  │ │
-│                                     │                │ Socket-Level LB│ │
-│                                     │  ┌─────────────┴─────────────┐  │ │
-│                                     │  │ Service: web-service      │  │ │
-│                                     │  │ Dynamic ClusterIP (10.0.x)│  │ │
-│                                     │  └───────────────────────────┘  │ │
-│                                     └─────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph VNet ["Azure Virtual Network: vnet-aks-lab (10.200.0.0/16)"]
+        subgraph SubnetJB ["Subnet: snet-jumpbox (10.200.1.0/24)"]
+            JB["Jumpbox VM<br>Standard_D2s_v5<br>Azure CLI & Kubectl"]
+        end
+
+        subgraph SubnetAKS ["Subnet: snet-aks-nodes (10.200.2.0/24)"]
+            Node["AKS Worker Node<br>aks-systempool<br>Linux Kernel 6.8 + eBPF"]
+        end
+
+        APIServer[("Private AKS Control Plane<br>API Server :6443<br>Private Endpoint")]
+        
+        subgraph CiliumOverlay ["Cilium eBPF Overlay Network (10.244.0.0/16)"]
+            Service["Service: web-service<br>ClusterIP: 10.0.x.x:80"]
+            Pod1["Pod Replica 1<br>Nginx :80"]
+            Pod2["Pod Replica 2<br>Nginx :80"]
+            Pod3["Pod Replica 3<br>Nginx :80"]
+        end
+    end
+
+    Dev["Developer Machine / WSL"] -->|"SSH :22 (TLS RSA 4096)"| JB
+    JB -->|"kubectl / HTTPS :6443"| APIServer
+    APIServer -.->|"Manage"| Node
+    Node -->|"Hosts"| CiliumOverlay
+    Service -->|"Socket-Level LB (eBPF Hash Map)"| Pod1
+    Service -->|"Socket-Level LB (eBPF Hash Map)"| Pod2
+    Service -->|"Socket-Level LB (eBPF Hash Map)"| Pod3
 ```
 
 > **📌 Note on IP Addresses:**
@@ -151,9 +141,7 @@ terraform destroy -auto-approve
 ---
 
 ## 👤 Author
-**Can Dumanlı**  
-*Cloud & DevOps Engineer*  
-- GitHub: [@Elxeoo](https://github.com/Elxeoo)  
+- **Can Dumanlı** ([@Elxeoo](https://github.com/Elxeoo))
 
 ---
 ## 📄 License
