@@ -53,12 +53,12 @@ graph TD
 
 ## ⚡ Why Cilium eBPF over Traditional Kube-Proxy?
 
-| Feature | Geleneksel `kube-proxy` + `iptables` | Azure CNI Powered by Cilium (eBPF) |
+| Feature | Traditional `kube-proxy` + `iptables` | Azure CNI Powered by Cilium (eBPF) |
 | :--- | :--- | :--- |
-| **Routing Complexity** | $O(N)$ — Kurallar sıralı taranır. Binlerce serviste CPU ve gecikme tavan yapar. | **$O(1)$** — Linux Kernel Hash Map ile sabit nanosaniye erişim süresi. |
-| **Packet Interception** | Paket TCP/IP ağ katmanını baştan sona dolaşır. | **Socket-Level Translation:** İstemci soketi açtığı anda (`connect` syscall) çekirdekte anında yönlendirilir. |
-| **IP Exhaustion** | Flat CNI her Pod için VNet'ten IP harcar; Subnet hızla tükenir. | **Overlay Mode:** VNet'ten yalnızca Worker Node IP alır; Pod'lar izole VXLAN havuzunda yaşar. |
-| **Data Plane Engine** | User Space ile Kernel Space arasında sürekli context switch. | Linux Kernel içinde çalışan güvenli, sandbox edilmiş eBPF Bytecode. |
+| **Routing Complexity** | $O(N)$ — Linear rule traversal. CPU usage and packet latency spike as services grow. | **$O(1)$** — Constant nanosecond lookups via Linux Kernel Hash Maps. |
+| **Packet Interception** | Packets traverse the entire TCP/IP network stack. | **Socket-Level Translation:** Traffic redirected directly in kernel space during `connect()` syscall. |
+| **IP Exhaustion** | Flat CNI consumes a VNet IP for every pod; subnet rapidly exhausts. | **Overlay Mode:** Only worker nodes consume VNet IPs; pods reside in an isolated overlay CIDR. |
+| **Data Plane Engine** | Frequent context switching between User Space and Kernel Space. | Sandboxed, verified eBPF bytecode executing directly in Linux Kernel. |
 
 ---
 
@@ -83,8 +83,8 @@ SERVICE ADDRESS          BACKEND ADDRESS (REVNAT_ID) (SLOT)
 - **Horizontal Scaling:** Scaling to 3 replicas instantly assigns unique overlay IPs (`10.244.0.x`) and registers 3 new endpoints in the Cilium datapath (`cilium-dbg endpoint list`).
 
 ### 3. Production Troubleshooting Post-Mortem
-- **`ImagePullBackOff` Teşhisi:** Sahte bir imaj tag'i (`nginx:nonexistent999`) ile pod çalıştırıldığında container'ın hiç başlayamadığı; `kubectl describe pod` çıktısındaki `Events` tablosundan 404 Registry hatası tespit edilmiştir.
-- **`CrashLoopBackOff` Teşhisi:** Container'ın başarıyla indiği ancak ana sürecin sonlandığı (`exit 1`) senaryoda; Kubelet restart sayacının kademeli artışı ve `Last State: Terminated -> Exit Code: 1` CLI teşhisiyle kök neden analizi gerçekleştirilmiştir.
+- **`ImagePullBackOff` Diagnosis:** Deploying a pod with a nonexistent image tag (`nginx:nonexistent999`) prevents container startup; root cause verified as a 404 Registry manifest error via `kubectl describe pod` under `Events`.
+- **`CrashLoopBackOff` Diagnosis:** In an `exit 1` crashing scenario, the image pulls successfully but the application process terminates; root cause confirmed via Kubelet exponential backoff and `Last State: Terminated -> Exit Code: 1` inspection.
 
 ---
 
@@ -141,7 +141,7 @@ terraform destroy -auto-approve
 ---
 
 ## 👤 Author
-- **Can Dumanlı** ([@Elxeoo](https://github.com/Elxeoo))
+- **Can** ([@Elxeoo](https://github.com/Elxeoo))
 
 ---
 ## 📄 License
