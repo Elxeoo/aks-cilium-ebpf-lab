@@ -1,6 +1,6 @@
 # 🚀 Private AKS with Azure CNI Powered by Cilium (eBPF)
 
-[![Terraform](https://img.shields.io/badge/Terraform-1.16+-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Terraform](https://img.shields.io/badge/Terraform-1.9+-623CE4?logo=terraform&logoColor=white)](https://www.terraform.io/)
 [![Azure](https://img.shields.io/badge/Microsoft_Azure-swedencentral-0078D4?logo=microsoftazure&logoColor=white)](https://azure.microsoft.com/)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-v1.30+-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Cilium](https://img.shields.io/badge/Cilium-eBPF_Datapath-F59121?logo=cilium&logoColor=white)](https://cilium.io/)
@@ -96,7 +96,7 @@ SERVICE ADDRESS          BACKEND ADDRESS (REVNAT_ID) (SLOT)
 ├── jumpbox.tf          # Bastion VM, Dynamic TLS Key, NSG (Port 22), NIC
 ├── network.tf          # Resource Group, VNet (10.200.0.0/16), Subnets
 ├── outputs.tf          # Jumpbox Public IP, Cluster Name, Private FQDN
-├── providers.tf        # HashiCorp azurerm (v5.x) & tls providers
+├── providers.tf        # HashiCorp azurerm (v4.x) & tls providers
 └── variables.tf        # Configurable deployment parameters
 ```
 
