@@ -72,14 +72,21 @@ resource "azurerm_linux_virtual_machine" "jumpbox_vm" {
     version   = "latest"
   }
 
+  # First boot: Azure CLI, plus kubectl from the same minor version as the cluster.
   custom_data = base64encode(<<-EOF
     #!/bin/bash
-    apt-get update
-    apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release
-    curl -sL https://aka.ms/InstallAzureCLIDeb | bash
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
-    apt-get update
+    set -euo pipefail
+    # apt-daily / unattended-upgrades can hold apt's locks on first boot.
+    # dpkg lock: wait for it. Package-list lock (apt-get update ignores that timeout): retry.
+    echo 'DPkg::Lock::Timeout "600";' > /etc/apt/apt.conf.d/99-lock-timeout
+    apt_update() { for i in $(seq 30); do apt-get update && return 0; sleep 10; done; return 1; }
+    apt_update
+    apt-get install -y apt-transport-https ca-certificates curl gnupg
+    curl -fsSL https://aka.ms/InstallAzureCLIDeb | bash
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/v${var.kubernetes_version}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v${var.kubernetes_version}/deb/ /' > /etc/apt/sources.list.d/kubernetes.list
+    apt_update
     apt-get install -y kubectl
   EOF
   )

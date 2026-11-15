@@ -3,6 +3,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   location                = var.location
   resource_group_name     = azurerm_resource_group.rg.name
   dns_prefix              = "aks-cilium-lab"
+  kubernetes_version      = var.kubernetes_version
   private_cluster_enabled = true
 
   network_profile {
@@ -23,6 +24,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
     vnet_subnet_id = azurerm_subnet.aks_subnet.id
   }
 
+  # Required block in azurerm 5.x. "Manual" keeps node auto-provisioning (Karpenter) off,
+  # so the node pool above is the whole cluster.
   node_provisioning_profile {
     mode = "Manual"
   }
