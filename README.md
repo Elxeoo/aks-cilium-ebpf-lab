@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="docs/diagrams/hero.svg" width="100%" alt="aks-cilium-ebpf-lab: a private AKS cluster where eBPF replaces kube-proxy. Terraform, AKS, Azure CNI overlay, Cilium. Private API endpoint reached from a jumpbox; Kubernetes 1.35; nodes 10.200.2.0/24, pods 10.244.0.0/16.">
-</p>
+# aks-cilium-ebpf-lab
 
 A private AKS cluster built with Terraform, using **Azure CNI Powered by Cilium** in overlay mode. The API server has no public endpoint; I reach it from a jumpbox inside the VNet.
 
